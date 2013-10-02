@@ -14,21 +14,8 @@
     <link rel="stylesheet" href="css/makeitresponsive.css">
     <!--Switch between the different themes changing the stylesheet below - light-theme.css |dark-theme.css -->
     <link rel="stylesheet" href="css/dark-theme.css">
-    <style>
-      input[type=date] {
-          -webkit-appearance: none;
-          background-color: silver;
-      }
-
-      input[type="range"]::-webkit-slider-thumb {
-           -webkit-appearance: none;
-          background-color: #666;
-          opacity: 0.5;
-          width: 10px;
-          height: 26px;
-      }
-    </style>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js" type="text/javascript"></script>
+ 
   </head>
   <body>
     <body onload="init()">
@@ -54,15 +41,22 @@
     </div>
     
     <div class="row">
-      <div class="col span8 map" id="map1">
+      <div class="col span8">
         <span id="dia1">2013-09-27</span>
         <input type="date" id="date1" value="2013-09-27" max="2013-110-02" min="2013-09-27" onchange="showDay1(this.value)"/>
       </div>
+      <div class="col span8">
+       <span id="dia2">2013-10-02</span>
+        <input type="date" id="date2" value="2013-10-02" max="2013-110-02" min="2013-09-27" onchange="showDay2(this.value)"/>
+      </div>
+
+    </div>
+    <div class="row">
+      
+      <div class="col span8 map" id="map1" >
+      </div>
 
       <div class="col span8 map" id="map2">
-        <span id="dia2">2013-10-02</span>
-        <input type="date" id="date2" value="2013-10-02" max="2013-110-02" min="2013-09-27" onchange="showDay2(this.value)"/>
-        <!-- <input type="range"  min="20130927" max="20131002" value="20131002"  onchange="showValue(this.value)"/> -->
       </div>
     </div>
 
@@ -110,21 +104,32 @@
 
     <script src="https://maps.googleapis.com/maps/api/js?sensor=false&v=3.8"></script>
     <script src="http://libs.cartocdn.com/cartodb.js/v3/cartodb.js"></script>
+    <script type="text/javascript" src="L.Map.Sync.js"></script>
     
-    <!--Change the URL's below in order to change the maps that are being shown.
-        map1 is the one on the left side and map2 is the one on the right side.
-        Go to your map view in CartoDB, click on share, and copy the URL under the API section
-        Check the cartodb.js documentation for more info
-        http://developers.cartodb.com/documentation/cartodb-js.html-->
     
+    <script type="infowindow/html" id="infowindow_template">
+      <div class="cartodb-popup">
+        <a href="#close" class="cartodb-popup-close-button close">x</a>
+         <div class="cartodb-popup-content-wrapper">
+           <div class="cartodb-popup-header">
+             <img style="width: 100%" src="http://cartodb.com/assets/logos/logos_full_cartodb_light-5ef5e4ff558f4f8d178ab2c8faa231c1.png"></src>
+           </div>
+           <div class="cartodb-popup-content">
+             <!-- content.data contains the field info -->
+             <h4>City: </h4>
+             <p>{{content.data.name}}</p>
+           </div>
+         </div>
+         <div class="cartodb-popup-tip-container"></div>
+      </div>
+    </script>
+
     <script type="text/javascript">
 
  
       var map1,map2;
       var selected_day1= $('#dia1').html();
       var selected_day2= $('#dia2').html();
-       //define que año esta seleccionado 
-      console.log("dia1: "+ selected_day1+ " dia2: "+ selected_day2);
   
       function showDay1(newValue){
         document.getElementById("dia1").innerHTML=newValue;
@@ -133,7 +138,7 @@
         document.getElementById("dia2").innerHTML=newValue;
       }
 
-      // create layer selector
+/*      // create layer query
       function createQuery(layer, mapa) {
         var sql = new cartodb.SQL({ user: 'sg-mapping' });
    
@@ -147,44 +152,59 @@
           layer.setSQL(query2);
         }
         
-      }
+      }*/
+      var map1,map2;
 
       function init(){
+        map1 = new L.map('map1', {
+            center: [40.336, 0.7],
+            zoom: 9            
+        });
 
-        var layerUrl ='http://sg-mapping.cartodb.com/api/v2/viz/46ab9808-2b49-11e3-a8ab-3085a9a956e8/viz.json';
+        map2 = new L.map('map2', {
+            center: [40.336, 0.7],
+            zoom: 9,
+            zoomControl: false                     
+        });
+
+        map1.sync(map2);
+        map2.sync(map1);
+
+        L.tileLayer('http://tile.stamen.com/toner-background/{z}/{x}/{y}.png', {
+          attribution: 'Stamen'
+        }).addTo(map1); 
+
+        L.tileLayer('http://tile.stamen.com/toner-background/{z}/{x}/{y}.png', {
+          attribution: 'Stamen'
+        }).addTo(map2);
+
+        var layerUrl ='http://sg-mapping.cartodb.com/api/v2/viz/bdbb5716-2ba9-11e3-a8ab-3085a9a956e8/viz.json';
+
         var Options1 = {
           sql: "SELECT * FROM terremoto where fecha = " +selected_day1
         };
         var Options2 = {
           sql: "SELECT * FROM terremoto where fecha = " +selected_day2
         };
-
-        //bgvghvghvgnnnnnnnnnnnnnnnnnnnnnnnnnnnnn
-        cartodb.createVis('map1', layerUrl,Options1)
-        .done(function(vis, layers) {
-          map1 = vis.mapView.map;
-          capa=layers[1].layers[0];
-          console.log(layers);
-          console.log(capa);
-          createQuery(capa, 'mapa1');
-          cartodb.createVis('map2', layerUrl)
-          .done(function(vis, layers) {
-              map2 = vis.mapView.map;
-              map1.on('change:zoom change:center', function(e) {
-                changeMapState(map1, map2);
-              });
-              map2.on('change:zoom change:center', function(e) {
-                changeMapState(map2, map1);
-              });
-          })
-        })
-        //Applies the same view from src to tgt map
-        function changeMapState(src,tgt){
-          tgt.set({
-              'center': src.get('center'),
-              'zoom': src.get('zoom')
+ /*       var subLayerOptions1 = {
+          sql: "SELECT * FROM terremoto where fecha = " +selected_day1,
+          cartocss: "#terremoto{marker-fill: #109DCD; marker-width: 5; marker-line-color: white; marker-line-width: 0;}"
+        };
+*/
+        cartodb.createLayer(map1, layerUrl)
+          .addTo(map1)
+          .on('done', function(layer) {
+            // get sublayer 0 and set the infowindow template
+            var sublayer = layer.getSubLayer(0);
+            //layer.getSubLayer(0).set(subLayerOptions1);
+            sublayer.infowindow.set('template', $('#infowindow_template').html());
+            sublayer.on('featureClick', function(e, pos, latlng, data) {
+              alert("Hey! You clicked " + data.cartodb_id);
+            });
+   
+          }).on('error', function() {
+            //log the error
           });
-        }
       }//init
     </script>
 
